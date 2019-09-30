@@ -596,7 +596,7 @@ def create_zim_file(basedir):
     xmlroot = ElementTree.parse(xml_file).getroot()
     ports = []
     services = []
-    os = ["Unknown"]
+    os = [["Unknown"]]
     for portobj in xmlroot.findall('./nmaprun/ports/port'):
         portparts = []
         serviceparts = []
