@@ -233,10 +233,10 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
         async with target.lock:
             target.running_tasks.append(tag)
         
-        await asyncio.wait_for([
+        await asyncio.wait([
             read_stream(process.stdout, target, tag=tag, patterns=patterns),
             read_stream(process.stderr, target, tag=tag, patterns=patterns, color=Fore.RED)
-        ], timeout=scan_timeout)
+        ])
     
         await process.wait()
       
