@@ -607,7 +607,7 @@ def create_zim_file(basedir):
         port = portobj.attrib['portid']
         portparts.append(port)
         ports.append(portparts)
-        service = port.find('service')
+        service = portobj.find('service')
         services.append([service.attrib['name']])
         # except:
         #     continue
