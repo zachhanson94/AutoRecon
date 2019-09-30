@@ -239,6 +239,7 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
         try:
             await asyncio.wait_for(process.wait(), timeout=scan_timeout)
         except asyncio.TimeoutError:
+            print("Received timeout!")
             error('Task {bred}{tag}{rst} on {byellow}{address}{rst} timed out!')
     
         async with target.lock:
