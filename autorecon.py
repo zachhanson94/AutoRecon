@@ -27,6 +27,7 @@ srvname = ''
 heartbeat_interval = 60
 port_scan_profile = None
 
+scan_timeout = None
 port_scan_profiles_config = None
 service_scans_config = None
 global_patterns = []
@@ -234,7 +235,7 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
         await asyncio.wait([
             read_stream(process.stdout, target, tag=tag, patterns=patterns),
             read_stream(process.stderr, target, tag=tag, patterns=patterns, color=Fore.RED)
-        ])
+        ], timeout=scan_timeout)
 
         await process.wait()
         async with target.lock:
@@ -656,6 +657,7 @@ if __name__ == '__main__':
     parser.add_argument('--single-target', action='store_true', default=False, help='Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will be created within the output directory. Default: false')
     parser.add_argument('--only-scans-dir', action='store_true', default=False, help='Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created. Default: false')
     parser.add_argument('--heartbeat', action='store', type=int, default=60, help='Specifies the heartbeat interval (in seconds) for task status messages. Default: %(default)s')
+    parser.add_argument('--scan-timeout', action='store', type=int, default=None, help='Specifies the maximum time (in seconds) to allow a task to run. Default: %(default)s')
     nmap_group = parser.add_mutually_exclusive_group()
     nmap_group.add_argument('--nmap', action='store', default='-vv --reason -Pn', help='Override the {nmap_extra} variable in scans. Default: %(default)s')
     nmap_group.add_argument('--nmap-append', action='store', default='', help='Append to the default {nmap_extra} variable in scans.')
@@ -666,7 +668,7 @@ if __name__ == '__main__':
 
     single_target = args.single_target
     only_scans_dir = args.only_scans_dir
-
+    scan_timeout = args.scan_timeout
     errors = False
 
     if args.concurrent_targets <= 0:
