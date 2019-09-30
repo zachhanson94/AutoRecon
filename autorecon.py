@@ -10,7 +10,8 @@
 import argparse
 import asyncio
 from colorama import Fore, Style
-from concurrent.futures import ProcessPoolExecutor, as_completed, FIRST_COMPLETED, TimeoutError
+from concurrent.futures import ProcessPoolExecutor, as_completed, FIRST_COMPLETED
+from concurrent.futures._base import TimeoutError
 from datetime import datetime
 import ipaddress
 import os
