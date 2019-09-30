@@ -622,11 +622,11 @@ def create_zim_file(basedir):
 
     with open(host_file, 'a') as f:
         for p in ports:
-            f.write(f"[[:overview:ports:{":".join(p)}]]\n")    
+            f.write(f"[[:overview:ports:{':'.join(p)}]]\n")    
         for s in services:
-            f.write(f"[[:overview:services:{":".join(s)}]]\n")
+            f.write(f"[[:overview:services:{':'.join(s)}]]\n")
         for o in os:
-            f.write(f"[[:overview:os:{":".join(o)}]]\n")
+            f.write(f"[[:overview:os:{':'.join(o)}]]\n")
 
 
 
