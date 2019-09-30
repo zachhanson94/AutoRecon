@@ -10,7 +10,7 @@
 import argparse
 import asyncio
 from colorama import Fore, Style
-from concurrent.futures import ProcessPoolExecutor, as_completed, FIRST_COMPLETED
+from concurrent.futures import ProcessPoolExecutor, as_completed, FIRST_COMPLETED, TimeoutError
 from datetime import datetime
 import ipaddress
 import os
@@ -238,7 +238,7 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
         ])
         try:
             await asyncio.wait_for(process.wait(), timeout=scan_timeout)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             error('Task {bred}{tag}{rst} on {byellow}{address}{rst} timed out!')
     
         async with target.lock:
