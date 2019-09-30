@@ -597,28 +597,29 @@ def create_zim_file(basedir):
     ports = []
     services = []
     os = [["Unknown"]]
-    for portobj in xmlroot.findall('./host/ports/port'):
+    portobjs = xmlroot.findall('./host/ports/port')
+    for portobj in portobjs:
         portparts = []
         serviceparts = []
-        try:
-            protocol = port.attrib['protocol']
-            portparts.append(protocol)
-            port = portobj.attrib['portid']
-            portparts.append(port)
-            ports.append(portparts)
-            service = port.find('service')
-            services.append([service.attrib['name']])
-        except:
-            continue
+        # try:
+        protocol = port.attrib['protocol']
+        portparts.append(protocol)
+        port = portobj.attrib['portid']
+        portparts.append(port)
+        ports.append(portparts)
+        service = port.find('service')
+        services.append([service.attrib['name']])
+        # except:
+        #     continue
     osparts = []
-    try:
-        osname = xmlroot.find('osmatch').attrib['name']
-        ostype = xmlroot.find('osmatch').find('osclass').attrib['osfamily']
-        osparts.append(ostype)
-        osparts.append(osname)
-        os = [osparts]
-    except:
-        print("Couldnt determine OS")
+    # try:
+    osname = xmlroot.find('osmatch').attrib['name']
+    ostype = xmlroot.find('osmatch').find('osclass').attrib['osfamily']
+    osparts.append(ostype)
+    osparts.append(osname)
+    os = [osparts]
+    # except:
+    #     print("Couldnt determine OS")
 
     with open(host_file, 'a') as f:
         for p in ports:
