@@ -597,7 +597,7 @@ def create_zim_file(basedir):
     ports = []
     services = []
     os = [["Unknown"]]
-    for portobj in xmlroot.findall('./nmaprun/ports/port'):
+    for portobj in xmlroot.findall('./host/ports/port'):
         portparts = []
         serviceparts = []
         try:
@@ -612,9 +612,9 @@ def create_zim_file(basedir):
             continue
     osparts = []
     try:
-        ostype = xmlroot.find('osclass').attrib['osfamily']
+        osname = xmlroot.find('osmatch').attrib['name']
+        ostype = xmlroot.find('osmatch').find('osclass').attrib['osfamily']
         osparts.append(ostype)
-        osname = root.find('osmatch').attrib['name']
         osparts.append(osname)
         os = [osparts]
     except:
