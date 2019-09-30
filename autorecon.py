@@ -230,7 +230,7 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
             with open(os.path.join(scandir, '_commands.log'), 'a') as file:
                 file.writelines(e('{cmd}\n\n'))
         if scan_timeout is not None:
-            cmd = f"timeout {scan_timeout} ({cmd})"
+            cmd = f"timeout {scan_timeout} $({cmd})"
         start_time = time.time()
         process = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, executable='/bin/bash')
         async with target.lock:
