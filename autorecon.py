@@ -226,23 +226,20 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
         async with target.lock:
             with open(os.path.join(scandir, '_commands.log'), 'a') as file:
                 file.writelines(e('{cmd}\n\n'))
-
+        if scan_timeout is not None:
+            cmd = "timeout {scan_timeout} {cmd}"
         start_time = time.time()
         process = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, executable='/bin/bash')
         async with target.lock:
             target.running_tasks.append(tag)
         
-        # try:
         await asyncio.wait_for([
             read_stream(process.stdout, target, tag=tag, patterns=patterns),
             read_stream(process.stderr, target, tag=tag, patterns=patterns, color=Fore.RED)
         ], timeout=scan_timeout)
     
         await process.wait()
-        # except asyncio.TimeoutError:
-        #     print("Received timeout!")
-        #     error('Task {bred}{tag}{rst} on {byellow}{address}{rst} timed out!')
-    
+      
         async with target.lock:
             target.running_tasks.remove(tag)
         elapsed_time = calculate_elapsed_time(start_time)
