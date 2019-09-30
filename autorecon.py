@@ -20,7 +20,7 @@ import string
 import sys
 import time
 import toml
-import xml.etree.ElementTree
+from xml.etree import ElementTree
 
 verbose = 0
 nmap = '-vv --reason -Pn'
