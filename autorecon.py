@@ -601,26 +601,26 @@ def create_zim_file(basedir):
     for portobj in portobjs:
         portparts = []
         serviceparts = []
-        # try:
-        protocol = portobj.attrib['protocol']
-        portparts.append(protocol)
-        port = portobj.attrib['portid']
-        portparts.append(port)
-        ports.append(portparts)
-        service = portobj.find('service')
-        services.append([service.attrib['name']])
-        # except:
-        #     continue
+        try:
+            protocol = portobj.attrib['protocol']
+            portparts.append(protocol)
+            port = portobj.attrib['portid']
+            portparts.append(port)
+            ports.append(portparts)
+            service = portobj.find('service')
+            services.append([service.attrib['name']])
+        except:
+            continue
     osparts = []
-    # try:
-    osroot = xmlroot.find('host').find('os')
-    osname = osroot.find('osmatch').attrib['name']
-    ostype = osroot.find('osmatch').find('osclass').attrib['osfamily']
-    osparts.append(ostype)
-    osparts.append(osname)
-    os = [osparts]
-    # except:
-    #     print("Couldnt determine OS")
+    try:
+        osroot = xmlroot.find('host').find('os')
+        osname = osroot.find('osmatch').attrib['name']
+        ostype = osroot.find('osmatch').find('osclass').attrib['osfamily']
+        osparts.append(ostype)
+        osparts.append(osname)
+        os = [osparts]
+    except:
+        print("Couldnt determine OS")
 
     with open(host_file, 'a') as f:
         for p in ports:
