@@ -613,8 +613,9 @@ def create_zim_file(basedir):
         #     continue
     osparts = []
     # try:
-    osname = xmlroot.find('osmatch').attrib['name']
-    ostype = xmlroot.find('osmatch').find('osclass').attrib['osfamily']
+    osroot = xmlroot.find('host').find('os')
+    osname = osroot.find('osmatch').attrib['name']
+    ostype = osroot.find('osmatch').find('osclass').attrib['osfamily']
     osparts.append(ostype)
     osparts.append(osname)
     os = [osparts]
