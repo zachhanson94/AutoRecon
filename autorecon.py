@@ -602,7 +602,7 @@ def create_zim_file(basedir):
         portparts = []
         serviceparts = []
         # try:
-        protocol = port.attrib['protocol']
+        protocol = portobj.attrib['protocol']
         portparts.append(protocol)
         port = portobj.attrib['portid']
         portparts.append(port)
