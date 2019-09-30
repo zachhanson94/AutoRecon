@@ -593,7 +593,7 @@ async def scan_services(loop, semaphore, target):
 def create_zim_file(basedir):
     host_file = basedir + ".txt"
     xml_file = basedir + "/scans/xml/_full_tcp_nmap.xml"
-    xmlroot = ElementTree.parse(xml_file).root()
+    xmlroot = ElementTree.parse(xml_file).getroot()
     ports = []
     services = []
     os = ["Unknown"]
