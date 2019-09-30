@@ -175,7 +175,7 @@ if 'password_wordlist' in service_scans_config:
 async def read_stream(stream, target, tag='?', patterns=[], color=Fore.BLUE):
     address = target.address
     while True:
-        line = await stream.readline()
+        line = await asyncio.wait_for(stream.readline(), timeout=scan_timeout)
         if line:
             line = str(line.rstrip(), 'utf8', 'ignore')
             debug(color + '[' + Style.BRIGHT + address + ' ' + tag + Style.NORMAL + '] ' + Fore.RESET + '{line}', color=color)
@@ -235,9 +235,12 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
         await asyncio.wait([
             read_stream(process.stdout, target, tag=tag, patterns=patterns),
             read_stream(process.stderr, target, tag=tag, patterns=patterns, color=Fore.RED)
-        ], timeout=scan_timeout)
-
-        await process.wait()
+        ])
+        try:
+            await asyncio.wait_for(process.wait(), timeout=scan_timeout)
+        except asyncio.TimeoutError:
+            error('Task {bred}{tag}{rst} on {byellow}{address}{rst} timed out!')
+    
         async with target.lock:
             target.running_tasks.remove(tag)
         elapsed_time = calculate_elapsed_time(start_time)
