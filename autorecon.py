@@ -229,8 +229,8 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
         async with target.lock:
             with open(os.path.join(scandir, '_commands.log'), 'a') as file:
                 file.writelines(e('{cmd}\n\n'))
-        if scan_timeout is not None && cmd[:2] != "if":
-            cmd = f"timeout {scan_timeout} {cmd}"
+        # if scan_timeout is not None && cmd[:2] != "if":
+        #     cmd = f"timeout {scan_timeout} {cmd}"
         start_time = time.time()
         process = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE, executable='/bin/bash')
         async with target.lock:
@@ -707,7 +707,7 @@ if __name__ == '__main__':
     parser.add_argument('--only-scans-dir', action='store_true', default=False, help='Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created. Default: false')
     parser.add_argument('--zim', action='store_true', default=False, help='Create zim text files for each host with links to overview. Default: false')
     parser.add_argument('--heartbeat', action='store', type=int, default=60, help='Specifies the heartbeat interval (in seconds) for task status messages. Default: %(default)s')
-    parser.add_argument('--scan-timeout', action='store', type=int, default=None, help='Specifies the maximum time (in seconds) to allow a task to run. Default: %(default)s')
+    parser.add_argument('--scan-timeout', action='store', type=int, default=600, help='Specifies the maximum time (in seconds) to allow a task to run. Default: %(default)s')
     nmap_group = parser.add_mutually_exclusive_group()
     nmap_group.add_argument('--nmap', action='store', default='-vv --reason -Pn', help='Override the {nmap_extra} variable in scans. Default: %(default)s')
     nmap_group.add_argument('--nmap-append', action='store', default='', help='Append to the default {nmap_extra} variable in scans.')
