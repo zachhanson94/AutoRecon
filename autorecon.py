@@ -20,6 +20,7 @@ import string
 import sys
 import time
 import toml
+import xml.etree.ElementTree
 
 verbose = 0
 nmap = '-vv --reason -Pn'
@@ -31,6 +32,8 @@ scan_timeout = None
 port_scan_profiles_config = None
 service_scans_config = None
 global_patterns = []
+
+create_zim_files = False
 
 username_wordlist = '/usr/share/seclists/Usernames/top-usernames-shortlist.txt'
 password_wordlist = '/usr/share/seclists/Passwords/darkweb2017-top100.txt'
@@ -587,6 +590,46 @@ async def scan_services(loop, semaphore, target):
                                                 patterns = scan['pattern']
 
                                             pending.add(asyncio.ensure_future(run_cmd(semaphore, e(command), target, tag=tag, patterns=patterns)))
+def create_zim_file(basedir):
+    host_file = basedir[0:-1] + ".txt"
+    xml_file = basedir + "scans/xml/_full_tcp_nmap.xml"
+    xmlroot = ElementTree.parse(xml_file).root()
+    ports = []
+    services = []
+    os = ["Unknown"]
+    for portobj in xmlroot.findall('./nmaprun/ports/port'):
+        portparts = []
+        serviceparts = []
+        try:
+            protocol = port.attrib['protocol']
+            portparts.append(protocol)
+            port = portobj.attrib['portid']
+            portparts.append(port)
+            ports.append(portparts)
+            service = port.find('service')
+            services.append([service.attrib['name']])
+        except:
+            continue
+    osparts = []
+    try:
+        ostype = xmlroot.find('osclass').attrib['osfamily']
+        osparts.append(ostype)
+        osname = root.find('osmatch').attrib['name']
+        osparts.append(osname)
+        os = [osparts]
+    except:
+        print("Couldnt determine OS")
+
+    with open(host_file, 'a') as f:
+        for p in ports:
+            f.write(f"[[:overview:ports:{":".join(p)}]]\n")    
+        for s in services:
+            f.write(f"[[:overview:services:{":".join(s)}]]\n")
+        for o in os:
+            f.write(f"[[:overview:os:{":".join(o)}]]\n")
+
+
+
 
 def scan_host(target, concurrent_scans):
     start_time = time.time()
@@ -634,6 +677,8 @@ def scan_host(target, concurrent_scans):
     try:
         loop.run_until_complete(scan_services(loop, semaphore, target))
         elapsed_time = calculate_elapsed_time(start_time)
+        if create_zim_files:
+            create_zim_file(basedir)
         info('Finished scanning target {byellow}{target.address}{rst} in {elapsed_time}')
     except KeyboardInterrupt:
         sys.exit(1)
@@ -658,6 +703,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output', action='store', default='results', help='The output directory for results. Default: %(default)s')
     parser.add_argument('--single-target', action='store_true', default=False, help='Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will be created within the output directory. Default: false')
     parser.add_argument('--only-scans-dir', action='store_true', default=False, help='Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created. Default: false')
+    parser.add_argument('--zim', action='store_true', default=False, help='Create zim text files for each host with links to overview. Default: false')
     parser.add_argument('--heartbeat', action='store', type=int, default=60, help='Specifies the heartbeat interval (in seconds) for task status messages. Default: %(default)s')
     parser.add_argument('--scan-timeout', action='store', type=int, default=None, help='Specifies the maximum time (in seconds) to allow a task to run. Default: %(default)s')
     nmap_group = parser.add_mutually_exclusive_group()
@@ -668,6 +714,7 @@ if __name__ == '__main__':
     parser.error = lambda s: fail(s[0].upper() + s[1:])
     args = parser.parse_args()
 
+    create_zim_files = args.zim
     single_target = args.single_target
     only_scans_dir = args.only_scans_dir
     scan_timeout = args.scan_timeout
