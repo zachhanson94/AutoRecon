@@ -175,7 +175,7 @@ if 'password_wordlist' in service_scans_config:
 async def read_stream(stream, target, tag='?', patterns=[], color=Fore.BLUE):
     address = target.address
     while True:
-        line = await asyncio.wait_for(stream.readline(), timeout=scan_timeout)
+        line = await stream.readline()
         if line:
             line = str(line.rstrip(), 'utf8', 'ignore')
             debug(color + '[' + Style.BRIGHT + address + ' ' + tag + Style.NORMAL + '] ' + Fore.RESET + '{line}', color=color)
