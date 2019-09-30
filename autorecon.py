@@ -237,6 +237,7 @@ async def run_cmd(semaphore, cmd, target, tag='?', patterns=[]):
             read_stream(process.stderr, target, tag=tag, patterns=patterns, color=Fore.RED)
         ])
         try:
+            print("Running process with timeout: {scan_timeout}s")
             await asyncio.wait_for(process.wait(), timeout=scan_timeout)
         except asyncio.TimeoutError:
             print("Received timeout!")
