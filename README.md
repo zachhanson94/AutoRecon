@@ -1,3 +1,7 @@
+[![Packaging status](https://repology.org/badge/vertical-allrepos/autorecon.svg)](https://repology.org/project/autorecon/versions)
+
+> It's like bowling with bumpers. - [@ippsec](https://twitter.com/ippsec)
+
 # AutoRecon
 
 AutoRecon is a multi-threaded network reconnaissance tool which performs automated enumeration of services. It is intended as a time-saving tool for use in CTFs and other penetration testing environments (e.g. OSCP). It may also be useful in real-world engagements.
@@ -20,26 +24,76 @@ AutoRecon was inspired by three tools which the author used during the OSCP labs
 * Full logging of commands that were run, along with errors if they fail.
 * Global and per-scan pattern matching so you can highlight/extract important information from the noise.
 
-## Requirements
+## Quick Install (Docker)
 
-* Python 3
-* colorama
-* toml
-
-Once Python 3 is installed, pip3 can be used to install the other requirements:
+If you don't have a Kali instance, you can quickly install AutoRecon using the Dockerfile in the repository. Simply download the Dockerfile, and run the following command from the same directory:
 
 ```bash
-$ pip3 install -r requirements.txt
+sudo docker build -t tib3rius/autorecon .
 ```
 
-Several people have indicated that installing pip3 via apt on the OSCP Kali version makes the host unstable. In these cases, pip3 can be installed by running the following commands:
+## Requirements
+
+- Python 3
+- `python3-pip`
+- `pipx` (optional, but recommended)
+
+### Python 3
+
+If you don't have these installed, and are running Kali Linux, you can execute the following:
+
+```bash
+$ sudo apt install python3
+$ sudo apt install python3-pip
+```
+
+Additionally, if you experience any issues with the stability of the `python3-pip` installation (as reported by a number of people installing `pip3` via `apt` on the OSCP distribution of Kali), you can install it manually as follows:
 
 ```bash
 $ curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
 $ python3 get-pip.py
 ```
 
-The "pip3" command should now be usable.
+The `pip3` command should now be usable.
+
+### `pipx`
+
+Further, it's recommended you use `pipx` to manage your python packages; this installs each python package in it's own virtualenv, and makes it available in the global context, which avoids conflicting package dependencies and the resulting instability. To summarise the installation instructions:
+
+```bash
+$ python3 -m pip install --user pipx
+$ python3 -m pipx ensurepath
+```
+
+Note that if you want to elevate privileges to run a program installed with `pipx`, with `sudo`, you have two options:
+
+1. Append the appropriate path to your execution command, using _one_ of the following examples (recommended):
+
+```bash
+$ sudo env "PATH=$PATH" autorecon [OPTIONS]
+$ sudo $(which autorecon) [OPTIONS]
+```
+
+To make this easier, you could add the following alias to your `~/.profile` (or equivalent):
+
+```
+alias sudo="sudo env \"PATH=$PATH\""
+```
+
+2. Add the `pipx` binary path to the `secure_path` set in `/etc/sudoers`
+
+```bash
+sudo visudo /etc/sudoers
+```
+
+Update the `secure_path` directive as follows:
+```
+Defaults	secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/kali/.local/bin"
+```
+
+If you're not using Kali Linux, make sure to adjust the path to the relevant user. Further detail on the installation of `pipx` is available in their installation instructions available [here](https://pipxproject.github.io/pipx/installation/). Please refer to this for any issues you experience.
+
+### Supporting packages
 
 Several commands used in AutoRecon reference the SecLists project, in the directory /usr/share/seclists/. You can either manually download the SecLists project to this directory (https://github.com/danielmiessler/SecLists), or if you are using Kali Linux (**highly recommended**) you can run the following:
 
@@ -71,17 +125,55 @@ whatweb
 wkhtmltoimage
 ```
 
+On Kali Linux, you can ensure these are all installed using the following command:
+
+```bash
+$ sudo apt install seclists curl enum4linux gobuster nbtscan nikto nmap onesixtyone oscanner smbclient smbmap smtp-user-enum snmp sslscan sipvicious tnscmd10g whatweb wkhtmltopdf
+```
+
+## Installation
+
+Ensure you have all of the requirements installed as per the previous section.
+
+### Using `pipx` (recommended)
+
+```bash
+$ pipx install git+https://github.com/Tib3rius/AutoRecon.git
+```
+
+### Using `pip`
+
+```bash
+$ python3 -m pip install git+https://github.com/Tib3rius/AutoRecon.git
+```
+
+### Manual
+
+If you'd prefer not to use `pip` or `pipx`, you can always still install and execute `autorecon.py` manually as a script. First install the dependencies:
+
+```bash
+$ python3 -m pip install -r requirements.txt
+```
+
+You will then be able to run the `autorecon.py` script (from `<AUTORECON_ROOT_DIR>/src/autorecon`):
+
+```bash
+$ python3 autorecon.py [OPTIONS] 127.0.0.1
+```
+
+See detailed usage options below.
+
 ## Usage
 
 AutoRecon uses Python 3 specific functionality and does not support Python 2.
 
 ```
-usage: autorecon.py [-h] [-ct <number>] [-cs <number>] [--profile PROFILE]
-                    [-o OUTPUT] [--single-target] [--only-scans-dir]
-                    [--heartbeat HEARTBEAT]
+usage: autorecon    [-h] [-t TARGET_FILE] [-ct <number>] [-cs <number>]
+                    [--profile PROFILE_NAME] [-o OUTPUT_DIR] [--single-target]
+                    [--only-scans-dir] [--heartbeat HEARTBEAT]
                     [--nmap NMAP | --nmap-append NMAP_APPEND] [-v]
                     [--disable-sanity-checks]
-                    targets [targets ...]
+                    [targets [targets ...]]
 
 Network reconnaissance tool to port scan and automatically enumerate services
 found on multiple targets.
@@ -93,15 +185,18 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  -t TARGET_FILE, --targets TARGET_FILE
+                        Read targets from file.
   -ct <number>, --concurrent-targets <number>
                         The maximum number of target hosts to scan
                         concurrently. Default: 5
   -cs <number>, --concurrent-scans <number>
                         The maximum number of scans to perform per target
                         host. Default: 10
-  --profile PROFILE     The port scanning profile to use (defined in port-
+  --profile PROFILE_NAME
+                        The port scanning profile to use (defined in port-
                         scan-profiles.toml). Default: default
-  -o OUTPUT, --output OUTPUT
+  -o OUTPUT_DIR, --output OUTPUT_DIR
                         The output directory for results. Default: results
   --single-target       Only scan a single target. A directory named after the
                         target will not be created. Instead, the directory
@@ -128,7 +223,7 @@ optional arguments:
 **Scanning a single target:**
 
 ```
-python3 autorecon.py 127.0.0.1
+$ autorecon 127.0.0.1
 [*] Scanning target 127.0.0.1
 [*] Running service detection nmap-full-tcp on 127.0.0.1
 [*] Running service detection nmap-top-20-udp on 127.0.0.1
@@ -176,7 +271,7 @@ Note that the actual command line output will be colorized if your terminal supp
 **Scanning multiple targets**
 
 ```
-python3 autorecon.py 192.168.1.100 192.168.1.1/30 localhost
+$ autorecon 192.168.1.100 192.168.1.1/30 localhost
 [*] Scanning target 192.168.1.100
 [*] Scanning target 192.168.1.1
 [*] Scanning target 192.168.1.2
@@ -201,7 +296,7 @@ AutoRecon supports multiple targets per scan, and will expand IP ranges provided
 **Scanning multiple targets with advanced options**
 
 ```
-python3 autorecon.py -ct 2 -cs 2 -vv -o outputdir 192.168.1.100 192.168.1.1/30 localhost
+$ autorecon -ct 2 -cs 2 -vv -o outputdir 192.168.1.100 192.168.1.1/30 localhost
 [*] Scanning target 192.168.1.100
 [*] Scanning target 192.168.1.1
 [*] Running service detection nmap-quick on 192.168.1.100 with nmap -vv --reason -Pn -sV -sC --version-all -oN "/root/outputdir/192.168.1.100/scans/_quick_tcp_nmap.txt" -oX "/root/outputdir/192.168.1.100/scans/_quick_tcp_nmap.xml" 192.168.1.100
@@ -488,3 +583,11 @@ In fact, enum4linux will always try these ports when it is run. So if the SMB se
 > The first time I heard of AutoRecon I asked whether I actually needed this, my enumeration was OK... I tried it with an open mind and straight away was a little floored on the amount of information that it would generate. Once I got used to it, and started reading the output I realized how much I was missing.  I used it for the OSCP exam, and it found things I would never have otherwise found. I firmly believe, without AutoRecon I would have failed. It's a great tool, and I'm very impressed what Tib3rius was able to craft up. Definitely something I'm already recommending to others, including you!
 >
 >\- othornew
+
+> AutoRecon helped me save valuable time in my OSCP exam, allowing me to spend less time scanning systems and more time breaking into them. This software is worth its weight in gold!
+>
+>\- TorHackr
+
+> The magical tool that made enumeration a piece of cake, just fire it up and watch the beauty of multi-threading spitting a ton of information that would have taken loads of commands to execute. I certainly believe that by just using AutoRecon in the OSCP exam, half of the effort would already be done. Strongly recommended!
+>
+>\- Arman (solved 4.5/5 exam hosts)

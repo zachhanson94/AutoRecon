@@ -7,8 +7,10 @@
 #    option) any later version.
 #
 
+import atexit
 import argparse
 import asyncio
+import colorama
 from colorama import Fore, Style
 from concurrent.futures import ProcessPoolExecutor, as_completed, FIRST_COMPLETED
 from datetime import datetime
@@ -21,10 +23,14 @@ import sys
 import time
 import toml
 from xml.etree import ElementTree
+import termios
+import appdirs
+import shutil
 
+# Globals
 verbose = 0
-nmap = '-vv --reason -Pn'
-srvname = ''
+nmap = "-vv --reason -Pn"
+srvname = ""
 heartbeat_interval = 60
 port_scan_profile = None
 
@@ -32,16 +38,94 @@ scan_timeout = None
 port_scan_profiles_config = None
 service_scans_config = None
 global_patterns = []
+username_wordlist = "/usr/share/seclists/Usernames/top-usernames-shortlist.txt"
+password_wordlist = "/usr/share/seclists/Passwords/darkweb2017-top100.txt"
+single_target = False
+only_scans_dir = False
 
 create_zim_files = False
 
 username_wordlist = '/usr/share/seclists/Usernames/top-usernames-shortlist.txt'
 password_wordlist = '/usr/share/seclists/Passwords/darkweb2017-top100.txt'
 
-rootdir = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+def _quit():
+    TERM_FLAGS = termios.tcgetattr(sys.stdin.fileno())
+    termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, TERM_FLAGS)
 
-single_target = False
-only_scans_dir = False
+
+def _init():
+    global port_scan_profiles_config
+    global service_scans_config
+    global global_patterns
+
+    atexit.register(_quit)
+    appname = "AutoRecon"
+    rootdir = os.path.dirname(os.path.realpath(__file__))
+    default_config_dir = os.path.join(rootdir, "config")
+    config_dir = appdirs.user_config_dir(appname)
+    port_scan_profiles_config_file = os.path.join(config_dir, "port-scan-profiles.toml")
+    service_scans_config_file = os.path.join(config_dir, "service-scans.toml")
+    global_patterns_config_file = os.path.join(config_dir, "global-patterns.toml")
+
+    # Confirm this directory exists; if not, populate it with the default configurations
+    if not os.path.exists(config_dir):
+        os.makedirs(config_dir, exist_ok=True)
+        shutil.copy(
+            os.path.join(default_config_dir, "port-scan-profiles-default.toml"),
+            port_scan_profiles_config_file,
+        )
+        shutil.copy(
+            os.path.join(default_config_dir, "service-scans-default.toml"),
+            service_scans_config_file,
+        )
+        shutil.copy(
+            os.path.join(default_config_dir, "global-patterns-default.toml"),
+            global_patterns_config_file,
+        )
+
+
+    with open(port_scan_profiles_config_file, "r") as p:
+        try:
+            port_scan_profiles_config = toml.load(p)
+
+            if len(port_scan_profiles_config) == 0:
+                fail(
+                    "There do not appear to be any port scan profiles configured in the {port_scan_profiles_config_file} config file."
+                )
+
+        except toml.decoder.TomlDecodeError as e:
+            fail(
+                "Error: Couldn't parse {port_scan_profiles_config_file} config file. Check syntax and duplicate tags."
+            )
+
+    with open(service_scans_config_file, "r") as c:
+        try:
+            service_scans_config = toml.load(c)
+        except toml.decoder.TomlDecodeError as e:
+            fail(
+                "Error: Couldn't parse service-scans.toml config file. Check syntax and duplicate tags."
+            )
+
+    with open(global_patterns_config_file, "r") as p:
+        try:
+            global_patterns = toml.load(p)
+            if "pattern" in global_patterns:
+                global_patterns = global_patterns["pattern"]
+            else:
+                global_patterns = []
+        except toml.decoder.TomlDecodeError as e:
+            fail(
+                "Error: Couldn't parse global-patterns.toml config file. Check syntax and duplicate tags."
+            )
+
+    if "username_wordlist" in service_scans_config:
+        if isinstance(service_scans_config["username_wordlist"], str):
+            username_wordlist = service_scans_config["username_wordlist"]
+
+    if "password_wordlist" in service_scans_config:
+        if isinstance(service_scans_config["password_wordlist"], str):
+            password_wordlist = service_scans_config["password_wordlist"]
+
 
 def e(*args, frame_index=1, **kvargs):
     frame = sys._getframe(frame_index)
@@ -140,40 +224,6 @@ def calculate_elapsed_time(start_time):
 
     return ', '.join(elapsed_time)
 
-port_scan_profiles_config_file = 'port-scan-profiles.toml'
-with open(os.path.join(rootdir, 'config', port_scan_profiles_config_file), 'r') as p:
-    try:
-        port_scan_profiles_config = toml.load(p)
-
-        if len(port_scan_profiles_config) == 0:
-            fail('There do not appear to be any port scan profiles configured in the {port_scan_profiles_config_file} config file.')
-
-    except toml.decoder.TomlDecodeError as e:
-        fail('Error: Couldn\'t parse {port_scan_profiles_config_file} config file. Check syntax and duplicate tags.')
-
-with open(os.path.join(rootdir, 'config', 'service-scans.toml'), 'r') as c:
-    try:
-        service_scans_config = toml.load(c)
-    except toml.decoder.TomlDecodeError as e:
-        fail('Error: Couldn\'t parse service-scans.toml config file. Check syntax and duplicate tags.')
-
-with open(os.path.join(rootdir, 'config', 'global-patterns.toml'), 'r') as p:
-    try:
-        global_patterns = toml.load(p)
-        if 'pattern' in global_patterns:
-            global_patterns = global_patterns['pattern']
-        else:
-            global_patterns = []
-    except toml.decoder.TomlDecodeError as e:
-        fail('Error: Couldn\'t parse global-patterns.toml config file. Check syntax and duplicate tags.')
-
-if 'username_wordlist' in service_scans_config:
-    if isinstance(service_scans_config['username_wordlist'], str):
-        username_wordlist = service_scans_config['username_wordlist']
-
-if 'password_wordlist' in service_scans_config:
-    if isinstance(service_scans_config['password_wordlist'], str):
-        password_wordlist = service_scans_config['password_wordlist']
 
 async def read_stream(stream, target, tag='?', patterns=[], color=Fore.BLUE):
     address = target.address
@@ -633,7 +683,7 @@ def create_zim_file(basedir):
 
 
 
-def scan_host(target, concurrent_scans):
+def scan_host(target, concurrent_scans, outdir):
     start_time = time.time()
     info('Scanning target {byellow}{target.address}{rst}')
 
@@ -695,14 +745,25 @@ class Target:
         self.lock = None
         self.running_tasks = []
 
-if __name__ == '__main__':
 
+
+def main():
+    global single_target
+    global only_scans_dir
+    global port_scan_profile
+    global heartbeat_interval
+    global nmap
+    global srvname
+    global verbose
+
+    _init()
     parser = argparse.ArgumentParser(description='Network reconnaissance tool to port scan and automatically enumerate services found on multiple targets.')
-    parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs="+")
+    parser.add_argument('targets', action='store', help='IP addresses (e.g. 10.0.0.1), CIDR notation (e.g. 10.0.0.1/24), or resolvable hostnames (e.g. foo.bar) to scan.', nargs="*")
+    parser.add_argument('-t', '--targets', action='store', type=str, default='', dest='target_file', help='Read targets from file.')
     parser.add_argument('-ct', '--concurrent-targets', action='store', metavar='<number>', type=int, default=5, help='The maximum number of target hosts to scan concurrently. Default: %(default)s')
     parser.add_argument('-cs', '--concurrent-scans', action='store', metavar='<number>', type=int, default=10, help='The maximum number of scans to perform per target host. Default: %(default)s')
-    parser.add_argument('--profile', action='store', default='default', help='The port scanning profile to use (defined in port-scan-profiles.toml). Default: %(default)s')
-    parser.add_argument('-o', '--output', action='store', default='results', help='The output directory for results. Default: %(default)s')
+    parser.add_argument('--profile', action='store', default='default', dest='profile_name', help='The port scanning profile to use (defined in port-scan-profiles.toml). Default: %(default)s')
+    parser.add_argument('-o', '--output', action='store', default='results', dest='output_dir', help='The output directory for results. Default: %(default)s')
     parser.add_argument('--single-target', action='store_true', default=False, help='Only scan a single target. A directory named after the target will not be created. Instead, the directory structure will be created within the output directory. Default: false')
     parser.add_argument('--only-scans-dir', action='store_true', default=False, help='Only create the "scans" directory for results. Other directories (e.g. exploit, loot, report) will not be created. Default: false')
     parser.add_argument('--zim', action='store_true', default=False, help='Create zim text files for each host with links to overview. Default: false')
@@ -732,7 +793,7 @@ if __name__ == '__main__':
         error('Argument -ct/--concurrent-scans: must be at least 1.')
         errors = True
 
-    port_scan_profile = args.profile
+    port_scan_profile = args.profile_name
 
     found_scan_profile = False
     for profile in port_scan_profiles_config:
@@ -783,21 +844,30 @@ if __name__ == '__main__':
     if args.nmap_append:
         nmap += " " + args.nmap_append
 
-    outdir = args.output
+    outdir = args.output_dir
     srvname = ''
     verbose = args.verbose
 
-    if len(args.targets) == 0:
-        error('You must specify at least one target to scan!')
-        errors = True
-
-    if single_target and len(args.targets) != 1:
-        error('You cannot provide more than one target when scanning in single-target mode.')
-        sys.exit(1)
-
+    raw_targets = args.targets
     targets = []
 
-    for target in args.targets:
+    if len(args.target_file) > 0:
+        if not os.path.isfile(args.target_file):
+            error('The target file {args.target_file} was not found.')
+            sys.exit(1)
+        try:
+            with open(args.target_file, 'r') as f:
+                lines = f.read()
+                for line in lines.splitlines():
+                    line = line.strip()
+                    if line.startswith('#') or len(line) == 0: continue
+                    if line not in raw_targets:
+                        raw_targets.append(line)
+        except OSError:
+            error('The target file {args.target_file} could not be read.')
+            sys.exit(1)
+
+    for target in raw_targets:
         try:
             ip = str(ipaddress.ip_address(target))
 
@@ -826,6 +896,14 @@ if __name__ == '__main__':
                     error(target + ' does not appear to be a valid IP address, IP range, or resolvable hostname.')
                     errors = True
 
+    if len(targets) == 0:
+        error('You must specify at least one target to scan!')
+        errors = True
+
+    if single_target and len(targets) != 1:
+        error('You cannot provide more than one target when scanning in single-target mode.')
+        sys.exit(1)
+
     if not args.disable_sanity_checks and len(targets) > 256:
         error('A total of ' + str(len(targets)) + ' targets would be scanned. If this is correct, re-run with the --disable-sanity-checks option to suppress this check.')
         errors = True
@@ -839,7 +917,7 @@ if __name__ == '__main__':
 
         for address in targets:
             target = Target(address)
-            futures.append(executor.submit(scan_host, target, concurrent_scans))
+            futures.append(executor.submit(scan_host, target, concurrent_scans, outdir))
 
         try:
             for future in as_completed(futures):
@@ -852,3 +930,8 @@ if __name__ == '__main__':
 
         elapsed_time = calculate_elapsed_time(start_time)
         info('{bgreen}Finished scanning all targets in {elapsed_time}!{rst}')
+
+
+if __name__ == '__main__':
+    main()
+
